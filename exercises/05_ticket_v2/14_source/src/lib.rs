@@ -1,4 +1,4 @@
-use crate::status::Status;
+use crate::status::{ParseStatusError, Status};
 
 // We've seen how to declare modules in one of the earliest exercises, but
 // we haven't seen how to extract them into separate files.
@@ -23,6 +23,11 @@ pub enum TicketNewError {
     DescriptionCannotBeEmpty,
     #[error("Description cannot be longer than 500 characters")]
     DescriptionTooLong,
+    #[error("`{status}` is not a valid status. Use one of: ToDo, InProgress, Done")]
+    InvalidStatus {
+        status: String,
+        source: ParseStatusError,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -47,7 +52,11 @@ impl Ticket {
             return Err(TicketNewError::DescriptionTooLong);
         }
 
-        // TODO: Parse the status string into a `Status` enum.
+        let status =
+            Status::try_from(status.clone()).map_err(|e| TicketNewError::InvalidStatus {
+                status,
+                source: e,
+            })?;
 
         Ok(Ticket {
             title,
@@ -59,8 +68,9 @@ impl Ticket {
 
 #[cfg(test)]
 mod tests {
-    use common::{valid_description, valid_title};
     use std::error::Error;
+
+    use common::{valid_description, valid_title};
 
     use super::*;
 
